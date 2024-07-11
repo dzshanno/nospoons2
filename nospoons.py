@@ -2,20 +2,56 @@
 import sys
 import math
 
-# cells holds [grid position,
-#              conns possible, 
-#              conns needed,
-#              conns applied,
-#              north conn,
-#              east conn,
-#              south conn,
-#              west conn]
-cells =[]
 
-# conns holds   [[x1,y1],
-#                [x2,y2],
-#                used -1 for not available] order so x1,y1 is left and/or up from x2,y2
-conns = []
+
+class Game:
+    '''Holds info on speciofic game'''
+    pass
+
+class grid:
+    ''' holds info on specific game grid'''
+    pass
+
+class conn:
+    ''' holds info on all connections'''
+    # first cell
+    # second cell
+    # number of connections used - default = 0
+    
+    def __init__(self,cell1,cell2,used = 0):
+        self.cell1 = cell1
+        self.cell2 = cell2
+        self.used = used
+
+    def hor(self):
+        '''checks to see if connection is horizontal'''
+        if self.cell1.y == self.cell2.y:
+            return True
+        else :
+            return False
+
+
+class cell:
+    ''' holds info on all cells'''
+    # x pos
+    # y pos
+    # possible connections default = 2
+    # required connections
+    # enabled connections default = 0
+    # list of connection objects
+    def __init__(self,x,y,poss=2,req=0,enabled=0,conns=[]):
+        self.x=x
+        self.y=y
+        self.poss=poss
+        self.req=req
+        self.enabled = enabled
+        self.conns = conns
+
+    def add_conn(self,conn):
+        self.conns.append(conn)
+        self.poss -= 1
+        self.req -= 1
+        self.enabled += 1
 
 target =[]
 def add_target(conn):
@@ -31,17 +67,19 @@ def add_next_conn(cell):
     added_conn = False
     if cell[1] == 0:
         return added_conn
-    for i in range(4,reversed):
+    for i in range(4,7):
         if cell[i][2]==0:
 
             cell[i][2] += 1
             cell[1] -= 1
             cell[2] -= 1
             cell[3] += 1
+
+            
             add_target(cell[i])
             added_conn = True
             return added_conn
-    for i in range(4,reversed):
+    for i in range(4,7):
         if cell[i][2]==1:
 
             cell[i][2] += 1
@@ -51,6 +89,16 @@ def add_next_conn(cell):
             add_target(cell[i][0])
             added_conn = True
             return added_conn
+
+
+def find_certain(cells):
+    another_loop = True
+    while another_loop == True:
+        for c in cells:
+            another_loop = False
+            if c[1] == c[2]:
+                another_loop = True
+                add_next_conn(c)
 
 
 
@@ -91,34 +139,35 @@ def case1 (cells,conns):
 # find a cell to the right
 def cell_right(cells,cell):
     for c in cells:
-        if c[0][1] ==  cell[0][1] and c[0][0]>cell[0][0]:
-            return c[0]
+        if c.y ==  cell.y and c.x>cell.x:
+            return c
     return ""
 
 #find cell below
 def cell_down(cells,cell):
     for c in cells:
-        if c[0][0] ==  cell[0][0] and c[0][1]>cell[0][1]:
-            return c[0]
+        if c.x ==  cell.x and c.y>cell.y:
+            return c
     return ""
 
 def cell_up(cells,cell):
     for c in reversed(cells):
-        if c[0][0] ==  cell[0][0] and c[0][1]<cell[0][1]:
-            return c[0]
+        if c.x ==  cell.x and c.y<cell.y:
+            return c
     return ""
 
 def cell_left(cells,cell):
     for c in reversed(cells):
-        if c[0][1] ==  cell[0][1] and c[0][0]<cell[0][0]:
-            return c[0]
+        if c.y ==  cell.y and c.x<cell.x:
+            return c
     return ""
 
 
-def no_choice(cell):
-    print
-
+# START OF GAME LOOP
 # init values
+    
+cells = []
+conns = []
 
 width = int(input())  # the number of cells on the X axis
 height = int(input())  # the number of cells on the Y axis
@@ -128,35 +177,31 @@ for r in range(height):
     line = input()  # width characters, each either a number or a '.'
     for c in range(width):
         if line[c] != ".":
-            cells.append([[c,r],0,int(line[c]),0,"","","",""])
+            cells.append(cell([c,r],0,int(line[c]),0,[]))
 
 # find neighbour cells - add to cell description and add to list of possible connectoins
 for c in cells:
     cr = cell_right(cells,c)
     if cr:
-        c[4] = cr
-        c[1] += 2
-        conns.append([c[0],cr,False])
+        c.conns.append(conn(c,cr))
+        c.poss += 2
     
     cd = cell_down(cells,c)
     if cd:
-        c[5] = cd
-        c[1] += 2
-        conns.append([c[0],cd,False])
+        c.conns.append(conn(c,cd))
+        c.poss += 2
 
     cu = cell_up(cells,c)
     if cu:
-        c[6] = cu
+        c.conns.append(conn(c,cu))
         c[1] += 2
-        conns.append([cu,c[0],False])
 
     cl = cell_left(cells,c)
     if cl:
-        c[7] = cl
+        c.conns.append(conn(c,cl))
         c[1] += 2
-        conns.append([cl,c[0],False])
 
-case1(cells,conns)       
+      
 print("Debug messages...", file=sys.stderr, flush=True)
 for c in cells:
     print(c, file=sys.stderr, flush=True)
