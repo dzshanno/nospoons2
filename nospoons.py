@@ -63,19 +63,26 @@ class game:
         for c in initial_state.cells:
             cr = self.cell_right(initial_state.cells,c)
             if cr:
-                c.conns.append(conn(c,cr,initial_state.cells))
+                new_conn = conn(c,cr,initial_state.cells)
+                c.conns.append(new_conn)
+                cr.conns.append(new_conn)
             
             cd = self.cell_down(initial_state.cells,c)
             if cd:
-                c.conns.append(conn(c,cd,initial_state.cells))
+                new_conn = conn(c,cd,initial_state.cells)
+                c.conns.append(new_conn)
+                cd.conns.append(new_conn)
 
-            cu = self.cell_up(initial_state.cells,c)
-            if cu:
-                c.conns.append(conn(c,cu,initial_state.cells))
+        #find number oof possible connections for each cell
+                
+        for c in initial_state.cells:
+            possible = 0
+            for con in c.conns:
+                possible += con.available
+            c.poss = possible
 
-            cl = self.cell_left(initial_state.cells,c)
-            if cl:
-                c.conns.append(conn(c,cl,initial_state.cells))
+        
+
 
         
 
@@ -114,6 +121,14 @@ class state:
         target = str(conn.cell1.x)+" "+str(conn.cell1.y)+" "+str(conn.cell2.x)+" "+str(conn.cell2.y)+ " "+str(weight)
         return target
 
+    def update_poss(self):
+        #find number oof possible connections for each cell 
+        print("updating possibilities", file=sys.stderr,flush = True) 
+        for c in self.cells:
+            possible = 0
+            for con in c.conns:
+                possible += con.available
+            c.poss = possible
 
     # given that a connection is certain return the conn object for the next best connection or False if none are possible
     def find_next_conn(self,cell):
@@ -123,32 +138,62 @@ class state:
         
         for con in cell.conns:
             print("checking con "+str(con), file = sys.stderr, flush=True)
-            print("used = "+str(con.used),file = sys.stderr, flush = True)
-            if con.used == 0:
+            print("available = "+str(con.available),file = sys.stderr, flush = True)
+            if con.available == 2:
+                con.available -= 1
                 con.used += 1
                 
                 con.cell1.poss -= 1
                 con.cell1.req -= 1
+                if con.cell1.req == 0:
+                    con.cell1.poss =0
                 con.cell1.enabled += 1
+                
 
                 con.cell2.poss -= 1
                 con.cell2.req -= 1
+                if con.cell2.req == 0:
+                    con.cell2.poss =0
                 con.cell2.enabled += 1
+                if con.cell1.poss == 0:
+                    for c in con.cell1.conns:
+                        print("A setting available = 0 for "+str(c),file = sys.stderr, flush = True)
+                        c.available = 0
+                if con.cell2.poss == 0:
+                    for c in con.cell2.conns:
+                        print("B setting available = 0 for "+str(c),file = sys.stderr, flush = True)
+                        c.available = 0
     
                 return con
             
         for con in cell.conns:
-            if con.used == 1:
-                con.used += 1
+            if con.available == 1:
+                con.available -= 1
+                con.used +=1
                 
                 con.cell1.poss -= 1
+                
                 con.cell1.req -= 1
+                if con.cell1.req == 0:
+                    con.cell1.poss =0
                 con.cell1.enabled += 1
 
                 con.cell2.poss -= 1
                 con.cell2.req -= 1
+                if con.cell2.req == 0:
+                    con.cell2.poss =0
                 con.cell2.enabled += 1
                 
+                if con.cell1.poss == 0:
+                    for c in con.cell1.conns:
+                        print("C setting available = 0 for "+str(c),file = sys.stderr, flush = True)
+                        c.available = 0
+                if con.cell2.poss == 0:
+                    for c in con.cell2.conns:
+                        print("D setting available = 0 for "+str(c),file = sys.stderr, flush = True)
+                        c.available = 0
+
+
                 return con
     
         return False
@@ -157,7 +202,7 @@ class state:
         for c in self.cells:
             unique = 0
             for con in c.conns:
-                if con.used<2:
+                if con.available>0:
                     unique +=1
 
             print(c, file=sys.stderr, flush=True)
@@ -171,6 +216,11 @@ class state:
             if c.req == 2 and unique == 1:
                 print("2 and 1", file = sys.stderr, flush=True)
                 return self.find_next_conn(c)
+            if c.req == 2 and unique == 2 and c.poss==3:
+                print("2 and 2 and 3", file = sys.stderr, flush=True)
+                return self.find_next_conn(c)
+            if c.req == 3 and unique == 3 and c.poss == 4:
+                return self.find_next_conn(c)
             if c.req == 3 and unique == 2:
                 return self.find_next_conn(c)
             if c.req == 5 and unique == 3:
@@ -179,12 +229,14 @@ class state:
                 return self.find_next_conn(c)
             if c.req == 7 and unique == 4:
                 return self.find_next_conn(c)
+            
         
         return False
     
     def find_certain_conns(self):
         while self.find_certain_conn():
-            print (self.find_certain_conn().output(1))
+            self.update_poss()
+            # print (self.find_certain_conn().output(1),file=sys.stderr, flush = True)
         print("no more certainties)", file=sys.stderr,flush = True)
 
 
@@ -192,17 +244,13 @@ class conn:
     ''' holds info on all connections'''
     # first cell
     # second cell
-    # number of connections used - default = 0
+    # number of connections available default = 2
     
-    def __init__(self,cell1,cell2,cells,used = 0):
+    def __init__(self,cell1,cell2,cells,available = 2, used = 0):
         self.cell1 = cell1
         self.cell2 = cell2
+        self.available=available
         self.used = used
-        for c in cells:
-            if c.x == cell1.x and c.y==cell1.y:
-                c.poss += 1
-            if c.x == cell2.x and c.y==cell2.y:
-                c.poss += 1
     
     def __str__(self):
         output = str(self.cell1.x)+" "+str(self.cell1.y)+" "+str(self.cell2.x)+" "+str(self.cell2.y)
@@ -262,7 +310,7 @@ class cell:
 # START OF GAME LOOP
 # init values
 new_game = game()
-cc = new_game.states[0].find_certain_conns()
+new_game.states[0].find_certain_conns()
 new_game.final_output()
 
 # Write an action using print
